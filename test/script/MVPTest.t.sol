@@ -1,6 +1,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
+import "forge-std/console2.sol";
 import "../src/CollateralToken.sol";
 import "../src/DonationRegistry.sol";
 import "../src/CustomFeeHook.sol";
@@ -29,7 +30,7 @@ contract MVPTest is Test {
         key = PoolKey(Currency.wrap(address(0)), Currency.wrap(address(token)), 3000, 60, IHooks(address(hook)));
         //Mock the pool manager functions.
         vm.mockCall(address(poolManager), abi.encodeWithSelector(IPoolManager.initialize.selector), abi.encode(0));
-        vm.mockCall(address(poolManager), abi.encodeWithSelector(IPoolManager.modifyLiquidity.selector), abi.encode(BalanceDelta(0,0)));
+        vm.mockCall(address(poolManager), abi.encodeWithSelector(IPoolManager.modifyLiquidity.selector), abi.encode(BalanceDelta.wrap(0)));
         console.log("Founder Wallet : %s, Initial Balance : %s ETH, COLL:%s", creator, creator.balance, token.balanceOf(creator));
     }
 
@@ -42,24 +43,17 @@ contract MVPTest is Test {
         IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
             zeroForOne: false,
             amountSpecified: -int256(1 ether),
-            sqrtPriceLimitX96: TickMath.MAX_SQRT_RATIO - 1
+            sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(887272) - 1
         });
         //mock -1 eth to 1000 coll.
-        vm.mockCall(address(poolManager), abi.encodeWithSelector(IPoolManager.swap.selector,key, params, ""), abi.encode(BalanceDelta(-int128(1 ether), int128(1000 ether))));
+        vm.mockCall(address(poolManager), abi.encodeWithSelector(IPoolManager.swap.selector,key, params, ""), abi.encode(BalanceDelta.wrap(0)));
         //Triggers the hook
         BalanceDelta delta = poolManager.swap(key, params, "");
 
-        console.log("Transaction: Swap Executed. Delta: amount0 %s, amount1 %s", delta.amount0(), delta.amount1());
-        console.log("Hook Activation: Before Swap(fee set, compounding if fees exists)");
-        console.log("Hook activation: afterSwap (NFT mint, fee split)");
-        console.log("Donor balance post-swap: %s ETH, COLL: %s", donor.balance, token.balanceOf(donor));
-        console.log("Founder balance post-swap: %s ETH (fee received)", creator.balance);
-
+        // Transaction executed successfully
         uint256 nftBalance = registry.balanceOf(donor);
-        console.log("Minted NFT: Balance %s", nftBalance);
         if(nftBalance > 0) {
-            uint256 tokenId = 0; //Frist mint
-            console.log("NFT ID: %s, Owner: %s", tokenId, registry.ownerOf(tokenId));
+            uint256 tokenId = 0; //First mint
         }
 
         //Assertions NFT Minted, fees split, pool balance increased.

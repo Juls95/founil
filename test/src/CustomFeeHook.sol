@@ -15,6 +15,8 @@ import "./DonationRegistry.sol";
 
 
 contract CustomFeeHook is IHooks {
+
+    using PoolIdLibrary for PoolKey;
     //Define the variables
     IPoolManager public immutable poolManager;
     DonationRegistry public immutable registry;
@@ -25,16 +27,22 @@ contract CustomFeeHook is IHooks {
     int24 constant COMPOUND_TICK_LOWER = -887220;
     int24 constant COMPOUND_TICK_UPPER = 887222;
 
-    uint128 constant COMPOUND_LIQUIDITY = 1000000000000000000000000;
-
-    uint128 constant COMPOUND_FEE = 10000;
-
-
     constructor(IPoolManager _poolManager, DonationRegistry _registry,address _creator) {
         poolManager = _poolManager;
         registry = _registry;
         creator = _creator;
     }
+
+   /* Not considering this for now.
+   function initializeCompoundingPosition(uint128 liquidityDelta) external payable{
+    require(msg.sender ==creator, "Only Creator");
+    IPoolManager.ModifyLiquidityParams memory params = IPoolManager.ModifyLiquidityParams({
+        tickLower: COMPOUND_TICK_LOWER,
+        tickUpper: COMPOUND_TICK_UPPER,
+        liquidityDelta: int256(uint256(liquidityDelta))
+    });
+    poolManager.modifyLiquidity(poolKey, params, "");
+   }*/ 
 //Getting the permissions for the hook.
     function getHookPermissions() external pure returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
@@ -117,55 +125,21 @@ contract CustomFeeHook is IHooks {
             // User swapped token0 for token1
             uint256 swapAmount = uint256(uint128(-delta.amount0()));
             uint256 feeAmount = (swapAmount * feeBasisPoints) / 10000;
-            uint256 toCreator = feeAmount / 2; // 50% to creator
-            uint256 toPool = feeAmount - toCreator; // 50% to pool
+            uint256 toCreator = feeAmount; // 100% to creator
             
             // Transfer fees to creator
             if (toCreator > 0) {
                 CurrencyLibrary.transfer(poolKey.currency0, creator, toCreator);
             }
-            
-            // Add remaining fees to pool liquidity
-            if (toPool > 0) {
-                IPoolManager.ModifyLiquidityParams memory liqParams = IPoolManager.ModifyLiquidityParams({
-                    tickLower: COMPOUND_TICK_LOWER,
-                    tickUpper: COMPOUND_TICK_UPPER,
-                    liquidityDelta: int256(uint128(LiquidityAmounts.getLiquidityForAmounts(
-                        uint160(poolKey.tickSpacing),
-                        uint160(Currency.unwrap(poolKey.currency0)),
-                        uint160(Currency.unwrap(poolKey.currency1)),
-                        toPool,
-                        0
-                    )))
-                });
-                poolManager.modifyLiquidity(poolKey, liqParams, "");
-            }
         } else if (delta.amount1() < 0) {
             // User swapped token1 for token0
             uint256 swapAmount = uint256(uint128(-delta.amount1()));
             uint256 feeAmount = (swapAmount * feeBasisPoints) / 10000;
-            uint256 toCreator = feeAmount / 2; // 50% to creator
-            uint256 toPool = feeAmount - toCreator; // 50% to pool
+            uint256 toCreator = feeAmount; // 100% to creator
             
             // Transfer fees to creator
             if (toCreator > 0) {
                 CurrencyLibrary.transfer(poolKey.currency1, creator, toCreator);
-            }
-            
-            // Add remaining fees to pool liquidity
-            if (toPool > 0) {
-                IPoolManager.ModifyLiquidityParams memory liqParams = IPoolManager.ModifyLiquidityParams({
-                    tickLower: COMPOUND_TICK_LOWER,
-                    tickUpper: COMPOUND_TICK_UPPER,
-                    liquidityDelta: int256(uint128(LiquidityAmounts.getLiquidityForAmounts(
-                        uint160(poolKey.tickSpacing),
-                        uint160(Currency.unwrap(poolKey.currency0)),
-                        uint160(Currency.unwrap(poolKey.currency1)),
-                        0,
-                        toPool
-                    )))
-                });
-                poolManager.modifyLiquidity(poolKey, liqParams, "");
             }
         }
         

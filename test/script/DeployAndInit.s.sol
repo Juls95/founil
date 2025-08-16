@@ -37,9 +37,10 @@ contract DeployAndInit is Script {
         IPoolManager.ModifyLiquidityParams memory liqParams = IPoolManager.ModifyLiquidityParams({ 
             tickLower: -60,
             tickUpper: 60,
-            liquidityDelta: 1 ether
+            liquidityDelta: 0,
+            salt: 0
         });
-        IPoolManager(poolManagerAddr).modifyLiquidity{value: 1 ether}(key, liqParams, "");
+        IPoolManager(poolManagerAddr).modifyLiquidity(key, liqParams, "");
 
         vm.stopBroadcast();
     }
