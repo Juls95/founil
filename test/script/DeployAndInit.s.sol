@@ -7,6 +7,8 @@ import "../src/CollateralToken.sol";
 import "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import "@uniswap/v4-core/src/types/PoolKey.sol";
 import "@uniswap/v4-core/src/types/Currency.sol";
+import "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import "@uniswap/v4-core/src/libraries/TickMath.sol";
 
 contract DeployAndInit is Script {
     function run() public {
@@ -20,16 +22,18 @@ contract DeployAndInit is Script {
         registry.grantRole(registry.MINTER_ROLE(), address(hook));
 
         //Deploy the pool, ETH/COLL with the hook
-        poolKey memory key = PoolKey(Currency.wrap(address(0)),
-            Currency.wrap(address(token)),
-            3000,
-            60,
-            IHooks(address(hook))
-        );
+        PoolKey memory key = PoolKey({
+            //Mapping right values
+            currency0: Currency.wrap(address(0)),
+            currency1: Currency.wrap(address(collateralToken)),
+            fee: 3000,
+            tickSpacing: 60,
+            hooks: IHooks(address(hook))
+        });
         //Approve the pool to spend the token. Add initial liquidity. 
-        token.approve(address(poolManagerAddr), 500000 ether);
+        collateralToken.approve(address(poolManagerAddr), 500000 ether);
         //Initialize the pool. Broadcast the transaction and send the eth
-        IPoolManager(poolManager).initialize(key, TickMath.getSqrtRatioAtTick(0),"");
+        IPoolManager(poolManagerAddr).initialize(key, TickMath.getSqrtPriceAtTick(0));
 
         vm.stopBroadcast();
     }

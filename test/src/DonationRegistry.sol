@@ -17,4 +17,8 @@ contract DonationRegistry is ERC721, AccessControl {
         uint256 tokenId = _nextTokenId++;
         _safeMint(to, tokenId);
     }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, AccessControl) returns (bool) {
+        return super.supportsInterface(interfaceId);
+    }
 }

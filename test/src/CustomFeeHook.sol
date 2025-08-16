@@ -1,11 +1,14 @@
 pragma solidity ^0.8.22;
 
-import "@uniswap/v4-core/contracts/hooks/IHooks.sol";
-import "@uniswap/v4-core/contracts/libraries/IPoolManager.sol";
-import "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import "@uniswap/v4-core/src/types/PoolKey.sol";
 import "@uniswap/v4-core/src/libraries/TickMath.sol";
+import "@uniswap/v4-core/src/libraries/Hooks.sol";
+import "@uniswap/v4-core/src/types/Currency.sol";
+import "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
+import "@uniswap/v4-periphery/libraries/LiquidityAmounts.sol";
 import "./DonationRegistry.sol";
 
 contract CustomFeeHook is IHooks {
@@ -31,7 +34,7 @@ contract CustomFeeHook is IHooks {
     }
 //Getting the permissions for the hook.
     function getHookPermissions() external pure returns (Hooks.Permissions memory) {
-        return new Hooks.Permissions({
+        return Hooks.Permissions({
             beforeInitialize : false,
             afterInitialize : true,
             beforeAddLiquidity : false,
@@ -54,9 +57,9 @@ contract CustomFeeHook is IHooks {
         PoolKey calldata key,
         uint160,
         int24
-    ) external returns (bytes24) {
+    ) external returns (bytes4) {
         poolKey = key;
-        return customFeeHook.afterInitialize.selector;
+        return CustomFeeHook.afterInitialize.selector;
     }
 
     function beforeSwap(
@@ -64,34 +67,91 @@ contract CustomFeeHook is IHooks {
         PoolKey calldata,
         IPoolManager.SwapParams calldata params,
         bytes calldata
-    ) external returns (bytes4, int24, uint24) {
-        //Auto Compund Fees
-        (uint256 amount0, uint256 amount1) = poolManager.collectFees(poolKey, address(this), type(uint128).max, type(uint128).max);
-        if (amount0 > 0 || amount1 > 0) {
-            CurrencyLibrary.transfer(poolkey.currency0,address(poolManager),amount0);
-            CurrencyLibrary.transfer(poolkey.currency1,address(poolManager),amount1);
-            poolManager.modifyLiquidity(poolKey, poolManager.modifyLiquidityParams  ({
-                tickLower : COMPOUND_TICK_LOWER,
-                tickUpper : COMPOUND_TICK_UPPER,
-                liquidityDelta : int256(LiquidityAmounts.getLiquidityForAmounts(
-                    poolKey.tickSpacing,
-                    poolKey.token0,
-                    poolKey.token1,
-                    amount0,
-                    amount1
-                ))            }),"");
-        }
-        return (customFeeHook.beforeSwap.selector, 0, 1000);
+    ) external returns (bytes4, BeforeSwapDelta, uint24) {
+        // Simple fee collection - just return default values
+        return (CustomFeeHook.beforeSwap.selector, BeforeSwapDelta.wrap(0), 1000);
     }
 
     function afterSwap(
-        address,
+        address sender,
         PoolKey calldata,
         IPoolManager.SwapParams calldata params,
+        BalanceDelta delta,
         bytes calldata
-    ) external returns (bytes4, int24, uint24) {
-        return (customFeeHook.afterSwap.selector, 0, 1000);
+    ) external returns (bytes4, int128) {
+        if(!params.zeroForOne) {
+            //MINT NFT
+            registry.safeMint(sender);
+        }
+        //Calculate the fees - simplified for now
+        int128 amount0 = delta.amount0();
+        // Just mint NFT and return
+        return (CustomFeeHook.afterSwap.selector, 0);   
     }
+
+    // Required interface implementations
+    function beforeInitialize(address, PoolKey calldata, uint160) external pure returns (bytes4) {
+        revert("Not implemented");
+    }
+
+    function beforeAddLiquidity(
+        address,
+        PoolKey calldata,
+        IPoolManager.ModifyLiquidityParams calldata,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        revert("Not implemented");
+    }
+
+    function afterAddLiquidity(
+        address,
+        PoolKey calldata,
+        IPoolManager.ModifyLiquidityParams calldata,
+        BalanceDelta,
+        BalanceDelta,
+        bytes calldata
+    ) external pure returns (bytes4, BalanceDelta) {
+        revert("Not implemented");
+    }
+
+    function beforeRemoveLiquidity(
+        address,
+        PoolKey calldata,
+        IPoolManager.ModifyLiquidityParams calldata,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        revert("Not implemented");
+    }
+
+    function afterRemoveLiquidity(
+        address,
+        PoolKey calldata,
+        IPoolManager.ModifyLiquidityParams calldata,
+        BalanceDelta,
+        BalanceDelta,
+        bytes calldata
+    ) external pure returns (bytes4, BalanceDelta) {
+        revert("Not implemented");
+    }
+
+    function beforeDonate(
+        address,
+        PoolKey calldata,
+        uint256,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        revert("Not implemented");
+    }
+
+    function afterDonate(
+        address,
+        PoolKey calldata,
+        uint256,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        revert("Not implemented");
     }
 
     function getPoolKey() external view returns (PoolKey memory) {
@@ -99,5 +159,6 @@ contract CustomFeeHook is IHooks {
     }
 
     function getPoolManager() external view returns (IPoolManager) {
-}
+        return poolManager;
+    }
 }
