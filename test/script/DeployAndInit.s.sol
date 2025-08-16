@@ -16,7 +16,7 @@ contract DeployAndInit is Script {
 
         //Deploy the tokens
         CollateralToken collateralToken = new CollateralToken(1000000 ether);
-        address poolManagerAddr= 0xE03A1074c86CFeDd5C142C4F04F1a1536e203543; //Sepolia
+        address poolManagerAddr= 0xFB3e0C6F74eB1a21CC1Da29aeC80D2Dfe6C9a317; //Sepolia
         DonationRegistry registry = new DonationRegistry(address(0)); //Grant the hook the minter role.
         CustomFeeHook hook = new CustomFeeHook(IPoolManager(poolManagerAddr), registry, msg.sender);
         registry.grantRole(registry.MINTER_ROLE(), address(hook));
@@ -34,6 +34,12 @@ contract DeployAndInit is Script {
         collateralToken.approve(address(poolManagerAddr), 500000 ether);
         //Initialize the pool. Broadcast the transaction and send the eth
         IPoolManager(poolManagerAddr).initialize(key, TickMath.getSqrtPriceAtTick(0));
+        IPoolManager.ModifyLiquidityParams memory liqParams = IPoolManager.ModifyLiquidityParams({ 
+            tickLower: -60,
+            tickUpper: 60,
+            liquidityDelta: 1 ether
+        });
+        IPoolManager(poolManagerAddr).modifyLiquidity{value: 1 ether}(key, liqParams, "");
 
         vm.stopBroadcast();
     }

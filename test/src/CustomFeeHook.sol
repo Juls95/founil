@@ -9,7 +9,10 @@ import "@uniswap/v4-core/src/types/Currency.sol";
 import "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 import "@uniswap/v4-periphery/libraries/LiquidityAmounts.sol";
+
 import "./DonationRegistry.sol";
+
+
 
 contract CustomFeeHook is IHooks {
     //Define the variables
@@ -71,6 +74,27 @@ contract CustomFeeHook is IHooks {
         // Simple fee collection - just return default values
         return (CustomFeeHook.beforeSwap.selector, BeforeSwapDelta.wrap(0), 1000);
     }
+    /* Complex way for the fee collection. Commented for now. 09:24 am
+    ) external returns (bytes4, int24, uint24) {
+        //Auto Compound Fees
+        (uint256 amount0, uint256 amount1) = poolManager.collectFees(poolKey, address(this), type(uint128).max, type(uint128).max);
+        if (amount0 > 0 || amount1 > 0) {
+            CurrencyLibrary.transfer(poolKey.currency0, address(poolManager), amount0);
+            CurrencyLibrary.transfer(poolKey.currency1, address(poolManager), amount1);
+            poolManager.modifyLiquidity(poolKey, IPoolManager.ModifyLiquidityParams({
+                tickLower: COMPOUND_TICK_LOWER,
+                tickUpper: COMPOUND_TICK_UPPER,
+                liquidityDelta: int256(LiquidityAmounts.getLiquidityForAmounts(
+                    poolKey.tickSpacing,
+                    poolKey.token0,
+                    poolKey.token1,
+                    amount0,
+                    amount1 
+                ))
+            }), "");
+        }
+        return (customFeeHook.beforeSwap.selector, 0, 1000);
+    */ 
 
     function afterSwap(
         address sender,
@@ -83,11 +107,90 @@ contract CustomFeeHook is IHooks {
             //MINT NFT
             registry.safeMint(sender);
         }
-        //Calculate the fees - simplified for now
-        int128 amount0 = delta.amount0();
-        // Just mint NFT and return
+        
+        // Calculate fees from the swap delta
+        // Fee is 0.1% (1000 basis points = 100%)
+        uint256 feeBasisPoints = 100; // 0.1%
+        
+        // Determine which token was swapped in (negative delta means tokens were taken from user)
+        if (delta.amount0() < 0) {
+            // User swapped token0 for token1
+            uint256 swapAmount = uint256(uint128(-delta.amount0()));
+            uint256 feeAmount = (swapAmount * feeBasisPoints) / 10000;
+            uint256 toCreator = feeAmount / 2; // 50% to creator
+            uint256 toPool = feeAmount - toCreator; // 50% to pool
+            
+            // Transfer fees to creator
+            if (toCreator > 0) {
+                CurrencyLibrary.transfer(poolKey.currency0, creator, toCreator);
+            }
+            
+            // Add remaining fees to pool liquidity
+            if (toPool > 0) {
+                IPoolManager.ModifyLiquidityParams memory liqParams = IPoolManager.ModifyLiquidityParams({
+                    tickLower: COMPOUND_TICK_LOWER,
+                    tickUpper: COMPOUND_TICK_UPPER,
+                    liquidityDelta: int256(uint128(LiquidityAmounts.getLiquidityForAmounts(
+                        uint160(poolKey.tickSpacing),
+                        uint160(Currency.unwrap(poolKey.currency0)),
+                        uint160(Currency.unwrap(poolKey.currency1)),
+                        toPool,
+                        0
+                    )))
+                });
+                poolManager.modifyLiquidity(poolKey, liqParams, "");
+            }
+        } else if (delta.amount1() < 0) {
+            // User swapped token1 for token0
+            uint256 swapAmount = uint256(uint128(-delta.amount1()));
+            uint256 feeAmount = (swapAmount * feeBasisPoints) / 10000;
+            uint256 toCreator = feeAmount / 2; // 50% to creator
+            uint256 toPool = feeAmount - toCreator; // 50% to pool
+            
+            // Transfer fees to creator
+            if (toCreator > 0) {
+                CurrencyLibrary.transfer(poolKey.currency1, creator, toCreator);
+            }
+            
+            // Add remaining fees to pool liquidity
+            if (toPool > 0) {
+                IPoolManager.ModifyLiquidityParams memory liqParams = IPoolManager.ModifyLiquidityParams({
+                    tickLower: COMPOUND_TICK_LOWER,
+                    tickUpper: COMPOUND_TICK_UPPER,
+                    liquidityDelta: int256(uint128(LiquidityAmounts.getLiquidityForAmounts(
+                        uint160(poolKey.tickSpacing),
+                        uint160(Currency.unwrap(poolKey.currency0)),
+                        uint160(Currency.unwrap(poolKey.currency1)),
+                        0,
+                        toPool
+                    )))
+                });
+                poolManager.modifyLiquidity(poolKey, liqParams, "");
+            }
+        }
+        
         return (CustomFeeHook.afterSwap.selector, 0);   
     }
+    /*//Calculate the fees. Simplified for now. 09:25
+        uint256 hookFee = delta.amount0 / 10; // 10% fee
+        uint256 toCreator = hookFee / 2;
+        uint256 toPool = hookFee - toCreator;
+        //Transfer the fees to the pool.
+        if(toPool > 0) {
+            poolManager.modifyLiquidity(poolKey, IPoolManager.ModifyLiquidityParams({
+                tickLower: COMPOUND_TICK_LOWER,
+                tickUpper: COMPOUND_TICK_UPPER,
+                liquidityDelta: int256(LiquidityAmounts.getLiquidityForAmounts(
+                    poolKey.tickSpacing,
+                    poolKey.token0,
+                    poolKey.token1,
+                    toPool,
+                    toPool
+                ))
+            }), "");
+        }
+        return (customFeeHook.afterSwap.selector, delta);  
+    */ 
 
     // Required interface implementations
     function beforeInitialize(address, PoolKey calldata, uint160) external pure returns (bytes4) {
