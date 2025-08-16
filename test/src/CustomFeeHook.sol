@@ -49,6 +49,51 @@ contract CustomFeeHook is IHooks {
         });
     }
 
+    function afterInitialize(
+        address,
+        PoolKey calldata key,
+        uint160,
+        int24
+    ) external returns (bytes24) {
+        poolKey = key;
+        return customFeeHook.afterInitialize.selector;
+    }
+
+    function beforeSwap(
+        address,
+        PoolKey calldata,
+        IPoolManager.SwapParams calldata params,
+        bytes calldata
+    ) external returns (bytes4, int24, uint24) {
+        //Auto Compund Fees
+        (uint256 amount0, uint256 amount1) = poolManager.collectFees(poolKey, address(this), type(uint128).max, type(uint128).max);
+        if (amount0 > 0 || amount1 > 0) {
+            CurrencyLibrary.transfer(poolkey.currency0,address(poolManager),amount0);
+            CurrencyLibrary.transfer(poolkey.currency1,address(poolManager),amount1);
+            poolManager.modifyLiquidity(poolKey, poolManager.modifyLiquidityParams  ({
+                tickLower : COMPOUND_TICK_LOWER,
+                tickUpper : COMPOUND_TICK_UPPER,
+                liquidityDelta : int256(LiquidityAmounts.getLiquidityForAmounts(
+                    poolKey.tickSpacing,
+                    poolKey.token0,
+                    poolKey.token1,
+                    amount0,
+                    amount1
+                ))            }),"");
+        }
+        return (customFeeHook.beforeSwap.selector, 0, 1000);
+    }
+
+    function afterSwap(
+        address,
+        PoolKey calldata,
+        IPoolManager.SwapParams calldata params,
+        bytes calldata
+    ) external returns (bytes4, int24, uint24) {
+        return (customFeeHook.afterSwap.selector, 0, 1000);
+    }
+    }
+
     function getPoolKey() external view returns (PoolKey memory) {
         return poolKey;
     }
