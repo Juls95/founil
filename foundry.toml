@@ -1,0 +1,13 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+cache_path = "cache"
+script = "script"
+
+[rpc_endpoints]
+sepolia = "https://sepolia.infura.io/v3/${INFURA_API_KEY}"
+
+[etherscan]
+sepolia = { key = "${ETHERSCAN_API_KEY}" }
