@@ -14,9 +14,9 @@ import "@uniswap/v4-core/src/types/BalanceDelta.sol";
 
 contract SepoliaUserTest is Script {
    
-    address constant COLLATERAL_TOKEN = 0x4d7c87BCa5532474BFad0facfD5F48a60E0d35f2;  // From deployment
-    address constant DONATION_REGISTRY = 0x81b5fbEAe765D68Df634BDE2999AA3c36D75c5A9; // From deployment
-    address constant CUSTOM_FEE_HOOK = 0x8dBdeAEB418fBf5fAd09e5E14E4609B3c4b7D0C0;   // From deployment
+    address constant COLLATERAL_TOKEN = 0x71CA543b4FF8cBaE5F13Ae0be60f455AE3ef3193;  // From deployment
+    address constant DONATION_REGISTRY = 0xb4b4cabEdA6C40eC841edD983c320BF8dD1b2DA8; // From deployment
+    address constant CUSTOM_FEE_HOOK = 0x3A34493E7aee98E418c55295FD61F14E2CB550C0;   // From deployment
     address constant POOL_MANAGER = 0xE03A1074c86CFeDd5C142C4F04F1a1536e203543;     // Sepolia Uniswap V4
 
     // Test user simulation

@@ -54,17 +54,17 @@ contract DeployAndInit is Script {
         //Initialize the pool. Broadcast the transaction and send the eth
         console.log("Initializing pool...");
         uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(0);
-        IPoolManager(poolManagerAddr).initialize(key, sqrtPriceX96);
-        console.log("Pool initialized successfully");
-        console.log("Pool address:", address(poolManagerAddr));
+        
+        /*IPoolManager(poolManagerAddr).initialize(key, sqrtPriceX96);
+        console.log("Pool initialized successfully");*/
         
         // Skip liquidity addition for now - requires unlock pattern 16:30
-        IPoolManager.ModifyLiquidityParams memory liquidityParams = IPoolManager.ModifyLiquidityParams({
+        /*IPoolManager.ModifyLiquidityParams memory liquidityParams = IPoolManager.ModifyLiquidityParams({
             tickLower: -887220,
             tickUpper: 887220,
             liquidityDelta: 100000 ether,
             salt: 0
-        });
+        });*/
 
         /*(BalanceDelta delta, ) = IPoolManager(poolManagerAddr).modifyLiquidity(key, liquidityParams, "");
         console.log("Liquidity added successfully");*/

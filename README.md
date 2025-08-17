@@ -8,7 +8,7 @@
 
 ## 📺 Project Demo
 
-[![Founil Demo](https://img.youtube.com/vi/pV6RO6BN4P4/0.jpg)](https://youtu.be/pV6RO6BN4P4)
+[![Founil Demo](https://img.youtube.com/vi/CxsyrY74Tc4/0.jpg)](https://youtu.be/CxsyrY74Tc4)
 
 *Click the image above to watch the project demonstration*
 
