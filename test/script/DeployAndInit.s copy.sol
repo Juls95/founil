@@ -55,8 +55,8 @@ contract DeployAndInit is Script {
         console.log("Initializing pool...");
         uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(0);
         IPoolManager(poolManagerAddr).initialize(key, sqrtPriceX96);
-        console.log("Pool initialized successfully");
         console.log("Pool address:", address(poolManagerAddr));
+        console.log("Pool initialized successfully");
         
         // Skip liquidity addition for now - requires unlock pattern 16:30
         IPoolManager.ModifyLiquidityParams memory liquidityParams = IPoolManager.ModifyLiquidityParams({
@@ -66,8 +66,8 @@ contract DeployAndInit is Script {
             salt: 0
         });
 
-        /*(BalanceDelta delta, ) = IPoolManager(poolManagerAddr).modifyLiquidity(key, liquidityParams, "");
-        console.log("Liquidity added successfully");*/
+        (BalanceDelta delta, ) = IPoolManager(poolManagerAddr).modifyLiquidity(key, liquidityParams, "");
+        console.log("Liquidity added successfully");
         console.log("Skipping liquidity addition - requires unlock pattern for Uniswap V4");
         console.log("Pool is ready for swaps through proper router/frontend");
 
